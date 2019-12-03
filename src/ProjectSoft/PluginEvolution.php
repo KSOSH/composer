@@ -80,17 +80,7 @@ class PluginEvolution {
 		endif;
 	}
 	
-	private function has()
-	{
-		$chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-		$chars_len = strlen($chars);
-		$has = "";
-		for ($i = 0; $i < 10; $i++):
-			$has .= $chars[rand(0, $chars_len - 1)];
-		endfor;
-		return $has;
-	}
-
+	
 	// Минификация HTML кода
 	public static function minifyHTML(\DocumentParser $modx)
 	{
@@ -103,7 +93,7 @@ class PluginEvolution {
 		if($modx->documentObject['minify'][1]==1 && $minify):
 			$str = $modx->documentOutput;
 			$re = '/((?:content=))(?:"|\')([A-я\S\s\d\D\X\W\w]+)?(?:"|\')/U';
-			$mb = md5(self::has());
+			$mb = md5(Util::has());
 			$str = preg_replace_callback($re, function ($matches) use ($mb) {
 				$res = preg_replace('(\r(?:\n)?)', $mb, $matches[2]);
 				return $matches[1].'"'.$res.'"';
@@ -121,10 +111,11 @@ class PluginEvolution {
 	// Роутер на короткие ссылки по ID документа
 	public static function routeNotFound(\DocumentParser $modx, array $params)
 	{
-		$tmp_url = trim($_SERVER['REQUEST_URI'], '/');
+		$arrReque = explode("?", $_SERVER['REQUEST_URI']);
+		parse_str(htmlspecialchars_decode($_SERVER['QUERY_STRING'], ENT_HTML5), $arrQuery);
+		$tmp_url = trim($arrQuery['q'], '/');
 		$tmp_url = rtrim($tmp_url, $modx->config['friendly_url_suffix']);
 		$url = ltrim($tmp_url, '/');
-		file_put_contents(MODX_BASE_PATH . "reid.txt", print_r($url, true));
 		$arr = explode('/', $url);
 		if(isset($arr[0])):
 			$arr[0] = intval($arr[0]);
@@ -134,7 +125,9 @@ class PluginEvolution {
 			$q = $modx->db->query("SELECT `id` FROM ".$modx->getFullTableName("site_content")." WHERE `id`='".$modx->db->escape($id)."'");
 			$docid = (int)$modx->db->getValue($q);
 			if($docid > 0):
-				$has = "?" . self::has();
+				unset($arrQuery['q']);
+				$arrQuery['hash'] = Util::has();
+				$has = "?" . http_build_query($arrQuery);
 				$url = $modx->makeUrl($docid) . $has;
 				$modx->sendRedirect($url, 0, 'REDIRECT_HEADER', 'HTTP/1.1 301 Moved Permanently');
 			endif;
@@ -151,22 +144,10 @@ class PluginEvolution {
 			foreach ( $iteartion as $file ) {
 				$file->isDir() ?  @rmdir($file) : @unlink($file);
 			}
-			self::setHtaccess($path);
+			Util::setHtaccess($path);
 			return true;
 		endif;
 		return false;
-	}
-
-	private static function setHtaccess(string $path = "")
-	{
-		$dir = rtrim(MODX_BASE_PATH . str_replace(MODX_BASE_PATH, "", $path), "/") . "/";
-		if($dir !== MODX_BASE_PATH && is_dir($dir)):
-			$content .= "<FilesMatch \".(htaccess|htpasswd|ini|phps|fla|psd|log|sh|php|json|xml|txt)$\">
-	Order Allow,Deny
-	Deny from all
-</FilesMatch>".PHP_EOL;
-			@file_put_contents($dir . ".htaccess", $content);
-		endif;
 	}
 
 	public static function addOpenDialog(\DocumentParser $modx, array $params)
@@ -179,57 +160,6 @@ class PluginEvolution {
 		$out .= '<style type="text/css">' . @file_get_contents($dir . "filemanager.css") . '</style>';
 
 		$modx->event->output($out);
-	}
-
-	private function debug($args, string $debug = 'plugin_evolution.txt')
-	{
-		$h = @fopen(MODX_BASE_PATH . $debug, 'a+');
-		@fwrite($h, print_r($args, true) . PHP_EOL);
-		@fclose($h);
-	}
-
-	public static function prepareItem(array $data, \DocumentParser $modx, $_DL, \prepare_DL_Extender $_extDocLister)
-	{
-		/*$month = array(
-			'1' =>  'января',
-			'2'	=>  'февраля',
-			'3' =>  'марта',
-			'4' =>  'апреля',
-			'5' =>  'мая',
-			'6' =>  'июня',
-			'7' =>  'июля',
-			'8' =>  'августа',
-			'9' =>  'сентября',
-			'10' => 'октября',
-			'11' => 'ноября',
-			'12' => 'декабря'
-		);
-		$data['out_date'] = "";
-		$data['seo_date'] = "";
-		$date = trim($data['datePub']);
-		if(($date = strtotime($data['datePub']))):
-			$newsdate = date("j.n.Y", $date);
-			$list = explode('.', $newsdate);
-			$arr = array(
-				$list[0],
-				$month[$list[1]],
-				$list[2]
-			);
-			$data['out_date'] = implode(' ', $arr)." года";
-			$data['seo_date'] = date('c', $date);
-		else:
-			$date = intval($data['datePub']);
-			$newsdate = date("j.n.Y", $date);
-			$list = explode('.', $newsdate);
-			$arr = array(
-				$list[0],
-				$month[$list[1]],
-				$list[2]
-			);
-			$data['out_date'] = implode(' ', $arr)." года";
-			$data['seo_date'] = date('c', $date);
-		endif;*/
-		return $data;
 	}
 
 }

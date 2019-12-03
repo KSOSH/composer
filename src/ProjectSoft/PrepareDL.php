@@ -1,11 +1,16 @@
 <?php
-namespace ProjectSoft
+namespace ProjectSoft;
 
 class PrepareDL {
 
+	public static function hsc(\DocumentParser $modx, string $str = "")
+	{
+		return preg_replace('/&amp;(#[0-9]+|[a-z]+);/i', '&$1;', htmlspecialchars($str, ENT_QUOTES, $modx->config['modx_charset']));
+	}
+
 	public static function prepareItem(array $data, \DocumentParser $modx, $_DL, \prepare_DL_Extender $_extDocLister)
 	{
-		/*$month = array(
+		$month = array(
 			'1' =>  'января',
 			'2'	=>  'февраля',
 			'3' =>  'марта',
@@ -43,7 +48,10 @@ class PrepareDL {
 			);
 			$data['out_date'] = implode(' ', $arr)." года";
 			$data['seo_date'] = date('c', $date);
-		endif;*/
+		endif;
+		$data['alt'] = Util::hsc($modx, $data['pagetitle']);
+		$data['introtext'] = nl2br($data['introtext']);
+		//$data['imgSoc']
 		return $data;
 	}
 }
